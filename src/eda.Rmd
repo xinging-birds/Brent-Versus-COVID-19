@@ -11,11 +11,10 @@ output:
 
 ```{r message=FALSE, warning=FALSE}
 rm(list=ls())
-setwd("~/Development/stat184/brent-covid-19")
 
+# install.packages("tidyquant")
 library(tidyverse)
 library(tidyquant)
-library(purrr)
 library(lubridate)
 ```
 
@@ -25,26 +24,27 @@ Has the advent of COVID-19 had a significant impact on futures prices for Brent 
 
 # Primary data: COVID-19 Cases
 
-### Load global data 
+### Load Global Data 
 
 *uses absolute file paths, change for your system*
 ```{r}
 covid19_confirmed <- 
-  read.csv(file.path("~/Development/stat184/brent-covid-19/COVID-19/csse_covid_19_data/csse_covid_19_time_series","time_series_covid19_confirmed_global.csv")) %>%
+  read.csv(file.path("~/Development/stat184/brent-covid-19/COVID-19/csse_covid_19_data/csse_covid_19_time_series",
+                     "time_series_covid19_confirmed_global.csv")) %>%
     pivot_longer(cols=c(starts_with("X")), names_to="date", values_to="confirmed")
 
 covid19_deaths <- 
-  read.csv(file.path("~/Development/stat184/brent-covid-19/COVID-19/csse_covid_19_data/csse_covid_19_time_series","time_series_covid19_deaths_global.csv")) %>%
-    rbind(
-      read.csv(file.path("~/Development/stat184/brent-covid-19/COVID-19/csse_covid_19_data/csse_covid_19_time_series","time_series_covid19_deaths_US.csv"))) %>%
+  read.csv(file.path("~/Development/stat184/brent-covid-19/COVID-19/csse_covid_19_data/csse_covid_19_time_series",
+                     "time_series_covid19_deaths_global.csv")) %>%
     pivot_longer(cols=c(starts_with("X")), names_to="date", values_to="deaths")
 
 covid19_recovered <- 
-  read.csv(file.path("~/Development/stat184/brent-covid-19/COVID-19/csse_covid_19_data/csse_covid_19_time_series","time_series_covid19_recovered_global.csv")) %>%
+  read.csv(file.path("~/Development/stat184/brent-covid-19/COVID-19/csse_covid_19_data/csse_covid_19_time_series",
+                     "time_series_covid19_recovered_global.csv")) %>%
     pivot_longer(cols=c(starts_with("X")), names_to="date", values_to="recovered")
 
 # get all data in one data table, and make everything tidy
-covid19_global <-
+covid19 <-
   covid19_confirmed %>%
     left_join(covid19_deaths %>% select(-c(Lat, Long)), 
               by=c('Province.State' = 'Province.State', 'Country.Region' = 'Country.Region', 'date'='date')) %>%
@@ -54,27 +54,69 @@ covid19_global <-
     mutate(date = lubridate::mdy(gsub(pattern = "^X", replacement="", date)))
 ```
 
-### Load US data
-TODO: Figure out how to sum this up properly.
+### Summary of Primary Data
 ```{r}
-covid19_us_confirmed <-
-  read.csv(file.path("~/Development/stat184/brent-covid-19/COVID-19/csse_covid_19_data/csse_covid_19_time_series","time_series_covid19_confirmed_US.csv")) %>%
-    pivot_longer(cols=c(starts_with("X")), names_to="date", values_to="confirmed")
-
-covid19_us_deaths <-
-  read.csv(file.path("~/Development/stat184/brent-covid-19/COVID-19/csse_covid_19_data/csse_covid_19_time_series","time_series_covid19_deaths_US.csv")) %>%
-    pivot_longer(cols=c(starts_with("X")), names_to="date", values_to="deaths")
-
-covid19_us <-
-  covid19_us_confirmed %>%
-    left_join(covid19_us_deaths %>% select(-c(UID, iso2, iso3, code3, FIPS, Admin2, Combined_Key, Lat, Long_)), 
-              by=c("Province_State"="Province_State","Country_Region"="Country_Region", "date"="date")) %>%
-    rename(c("province.state"="Province_State", "country.region"="Country_Region", "lat"="Lat", "long"="Long_")) %>%
-    group_by(province.state, country.region, date) %>%
-    summarise(confirmed = sum(confirmed), deaths = sum(deaths))
+tail(covid19)
+summary(covid19)
 ```
 
-### Summary of primary data
+### Analysis
+
+* Data found from the JHU COVID-19 repo [here](https://github.com/CSSEGISandData/COVID-19); forked and included as a submodule in this repository
+* Collected by the Johns Hopkins CSSE group, sourced by various health organizations arouond the world
+* Data collection and posting started on January 22, 2020 and collected to keep the public informed about the rapidly-developing COVID-19 crisis
+* Case represents the number of COVID-19 confirmed cases, deaths and recoveries for a given province in a given country on a given day. In other words, it's the confirmed cases, deaths and recoveries for every combination of a country's regions and dates. Notably, the numbers are cumulative. There are a total of 19,166 cases available.
+* If we use some sort of map display, the latitude and longitude data will be useful. Otherwise, the region, country, confirmed cases, deaths, and recoveries are my primary interest for answering the guiding question.
+
+# Secondary Data
+
+### Load Brent Crude Oil
 ```{r}
-summary(covid19)
+brent <- 
+  tq_get("BZ=F", from=mdy("1.22.2020")) %>%
+    select(-symbol)
+```
+
+Conveniently, this is already in tidy form, so there's a lot less data wrangling to initially do.
+
+### Summary of Secondary Data
+
+```{r}
+tail(brent)
+summary(brent)
+```
+
+### Analysis
+
+* Data found using the `tidyquant` package API which pulls from Yahoo Finance
+* Yahoo Finance maintains the data
+* Data collection starts from January 20, 2020 to match the COVID-19 data, and is maintained for investors and traders to keep track of financial changes
+* One case represents the OHLC end-of-day Brent crude oil values for each day (notice that the days where trading is closed is ommitted). There are 62 cases available.
+* Plan is to mostly pay attention to date, close and volume variables. We're going to ignore adjusted values just because no splits occur with futures so it should be fine.
+
+# Exploration
+
+```{r}
+brent %>%
+  ggplot(aes(date, close)) +
+    geom_line() +
+    geom_candlestick(aes(open=open, high=high, low=low, close=close)) +
+    theme_tq()
+```
+
+We can see that Brent crude oil futures prices tanked starting in January. I wonder what happened? Hmm.
+
+```{r}
+brent %>%
+  ggplot(aes(date, volume)) +
+  geom_line()
+```
+
+```{r}
+covid19 %>%
+  filter(country.region=="US") %>%
+  group_by(date) %>%
+  summarise(confirmed=sum(confirmed)) %>%
+  ggplot(aes(date, confirmed)) +
+    geom_line()
 ```
