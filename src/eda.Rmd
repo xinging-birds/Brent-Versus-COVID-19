@@ -12,7 +12,7 @@ output:
 ```{r message=FALSE, warning=FALSE}
 rm(list=ls())
 
-# install.packages("tidyquant")
+install.packages("tidyquant")
 library(tidyverse)
 library(tidyquant)
 library(lubridate)
@@ -29,17 +29,17 @@ Has the advent of COVID-19 had a significant impact on futures prices for Brent 
 *uses absolute file paths, change for your system*
 ```{r}
 covid19_confirmed <- 
-  read.csv(file.path("~/Development/stat184/brent-covid-19/COVID-19/csse_covid_19_data/csse_covid_19_time_series",
+  read.csv(file.path("~/brent-versus-covid-19/COVID-19/csse_covid_19_data/csse_covid_19_time_series",
                      "time_series_covid19_confirmed_global.csv")) %>%
     pivot_longer(cols=c(starts_with("X")), names_to="date", values_to="confirmed")
 
 covid19_deaths <- 
-  read.csv(file.path("~/Development/stat184/brent-covid-19/COVID-19/csse_covid_19_data/csse_covid_19_time_series",
+  read.csv(file.path("~/brent-versus-covid-19/COVID-19/csse_covid_19_data/csse_covid_19_time_series",
                      "time_series_covid19_deaths_global.csv")) %>%
     pivot_longer(cols=c(starts_with("X")), names_to="date", values_to="deaths")
 
 covid19_recovered <- 
-  read.csv(file.path("~/Development/stat184/brent-covid-19/COVID-19/csse_covid_19_data/csse_covid_19_time_series",
+  read.csv(file.path("~/brent-versus-covid-19/COVID-19/csse_covid_19_data/csse_covid_19_time_series",
                      "time_series_covid19_recovered_global.csv")) %>%
     pivot_longer(cols=c(starts_with("X")), names_to="date", values_to="recovered")
 
@@ -50,15 +50,10 @@ covid19 <-
               by=c('Province.State' = 'Province.State', 'Country.Region' = 'Country.Region', 'date'='date')) %>%
     left_join(covid19_recovered %>% select(-c(Lat, Long)),
               by=c('Province.State' = 'Province.State', 'Country.Region' = 'Country.Region', 'date'='date')) %>%
-    rename(c("province.state"="Province.State", "country.region"="Country.Region", "lat"="Lat", "long"="Long")) %>%
     mutate(date = lubridate::mdy(gsub(pattern = "^X", replacement="", date)))
 ```
 
 ### Summary of Primary Data
-```{r}
-tail(covid19)
-summary(covid19)
-```
 
 ### Analysis
 
@@ -80,11 +75,6 @@ brent <-
 Conveniently, this is already in tidy form, so there's a lot less data wrangling to initially do.
 
 ### Summary of Secondary Data
-
-```{r}
-tail(brent)
-summary(brent)
-```
 
 ### Analysis
 
@@ -113,10 +103,23 @@ brent %>%
 ```
 
 ```{r}
+global <- 
+  covid19 %>%
+    group_by(date) %>%
+    summarise(confirmed=sum(confirmed), deaths=sum(deaths), recovered=sum(recovered))
+
 covid19 %>%
-  filter(country.region=="US") %>%
+  filter(Country.Region=="US") %>%
   group_by(date) %>%
   summarise(confirmed=sum(confirmed)) %>%
   ggplot(aes(date, confirmed)) +
     geom_line()
 ```
+
+```{r}
+global %>%
+  ggplot(aes(date, deaths)) +
+  geom_line() +
+  geom_line(aes(date, confirmed))
+```
+
