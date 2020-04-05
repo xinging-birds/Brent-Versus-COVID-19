@@ -1,0 +1,194 @@
+---
+title: "EDA of Brent Crude Oil and COVID-19"
+author: "Justin Huang and So I Kwak"
+output: 
+  html_notebook:
+    fig_height: 6
+    fig_width: 10
+---
+
+## Libraries
+
+```{r message=FALSE, warning=FALSE}
+rm(list=ls())
+
+# install.packages("tidyquant")
+library(tidyverse)
+library(tidyquant)
+library(lubridate)
+```
+
+# Guiding Question
+
+Has the advent of COVID-19 had a significant impact on futures prices for Brent Crude Oil? If so, how has it been affected and where might it go in the foreseeable future?
+
+# Primary data: COVID-19 Cases
+
+### Load Global Data 
+
+*uses absolute file paths, change for your system*
+```{r}
+covid19_confirmed <- 
+  read.csv(file.path("~/Development/stat184/brent-covid-19/COVID-19/csse_covid_19_data/csse_covid_19_time_series",
+                     "time_series_covid19_confirmed_global.csv")) %>%
+    pivot_longer(cols=c(starts_with("X")), names_to="date", values_to="confirmed")
+
+covid19_deaths <- 
+  read.csv(file.path("~/Development/stat184/brent-covid-19/COVID-19/csse_covid_19_data/csse_covid_19_time_series",
+                     "time_series_covid19_deaths_global.csv")) %>%
+    pivot_longer(cols=c(starts_with("X")), names_to="date", values_to="deaths")
+
+covid19_recovered <- 
+  read.csv(file.path("~/Development/stat184/brent-covid-19/COVID-19/csse_covid_19_data/csse_covid_19_time_series",
+                     "time_series_covid19_recovered_global.csv")) %>%
+    pivot_longer(cols=c(starts_with("X")), names_to="date", values_to="recovered")
+
+# get all data in one data table, and make everything tidy
+covid19 <-
+  covid19_confirmed %>%
+    left_join(covid19_deaths %>% select(-c(Lat, Long)), 
+              by=c('Province.State' = 'Province.State', 'Country.Region' = 'Country.Region', 'date'='date')) %>%
+    left_join(covid19_recovered %>% select(-c(Lat, Long)),
+              by=c('Province.State' = 'Province.State', 'Country.Region' = 'Country.Region', 'date'='date')) %>%
+    rename(c("province.state"="Province.State", "country.region"="Country.Region", "lat"="Lat", "long"="Long")) %>%
+    mutate(date = lubridate::mdy(gsub(pattern = "^X", replacement="", date)))
+```
+
+### Summary of Primary Data
+
+```{r}
+summary(covid19)
+tail(covid19)
+```
+### Analysis
+
+* Data found from the JHU COVID-19 repo [here](https://github.com/CSSEGISandData/COVID-19); forked and included as a submodule in this repository
+* Collected by the Johns Hopkins CSSE group, sourced by various health organizations arouond the world
+* Data collection and posting started on January 22, 2020 and collected to keep the public informed about the rapidly-developing COVID-19 crisis
+* Case represents the number of COVID-19 confirmed cases, deaths and recoveries for a given province in a given country on a given day. In other words, it's the confirmed cases, deaths and recoveries for every combination of a country's regions and dates. Notably, the numbers are cumulative. There are a total of 19,166 cases available.
+* If we use some sort of map display, the latitude and longitude data will be useful. Otherwise, the region, country, confirmed cases, deaths, and recoveries are my primary interest for answering the guiding question.
+
+# Secondary Data
+
+### Load Brent Crude Oil
+```{r}
+brent <- 
+  tq_get("BZ=F", from=mdy("1.22.2020")) %>%
+    select(-symbol)
+```
+
+Conveniently, this is already in tidy form, so there's a lot less data wrangling to initially do.
+
+### Summary of Secondary Data
+
+```{r}
+tail(brent)
+summary(brent)
+```
+
+### Analysis
+
+* Data found using the `tidyquant` package API which pulls from Yahoo Finance
+* Yahoo Finance maintains the data
+* Data collection starts from January 20, 2020 to match the COVID-19 data, and is maintained for investors and traders to keep track of financial changes
+* One case represents the OHLC end-of-day Brent crude oil values for each day (notice that the days where trading is closed is ommitted). There are 62 cases available.
+* Plan is to mostly pay attention to date, close and volume variables. We're going to ignore adjusted values just because no splits occur with futures so it should be fine.
+
+# Exploration
+
+### Brent Crude Oil
+
+```{r}
+brent %>%
+  ggplot(aes(date, close)) +
+    geom_line() +
+    geom_candlestick(aes(open=open, high=high, low=low, close=close)) +
+    theme_tq()
+```
+
+We can see that Brent crude oil futures prices tanked starting in January. I wonder what happened? Hmm.
+
+### COVID-19
+
+```{r}
+global <- 
+  covid19 %>%
+    group_by(date) %>%
+    summarise(confirmed=sum(confirmed), deaths=sum(deaths), recovered=sum(recovered, na.rm=TRUE))
+
+covid19 %>%
+  filter(country.region=="US") %>%
+  group_by(date) %>%
+  summarise(confirmed=sum(confirmed)) %>%
+  ggplot(aes(date, confirmed)) +
+    geom_line() +
+    scale_y_log10()
+
+covid19 %>%
+  filter(country.region=="China") %>%
+  group_by(date) %>%
+  summarise(confirmed=sum(confirmed)) %>%
+  ggplot(aes(date, confirmed)) +
+    geom_line() +
+    scale_y_log10()
+
+covid19 %>%
+  filter(country.region=="Korea, South") %>%
+  group_by(date) %>%
+  summarise(confirmed=sum(confirmed)) %>%
+  ggplot(aes(date, confirmed)) +
+    geom_line() +
+    scale_y_log10()
+```
+Log scale of coronavirus cases in America, China, and South Korea. We can see that America's growth has been backloaded compared to the other two, and is even starting to taper off recently. China and South Korea have tapered off in growth of new cases, thankfully. China's reason is just because they were the first to get the virus and many have recovered, whereas South Korea has had a successful response to the virus and new cases are more scarce than in America.
+
+
+```{r}
+global %>%
+  ggplot(aes(date, deaths)) +
+  geom_line(color="red") +
+  geom_line(aes(date, confirmed)) +
+  geom_line(aes(date, recovered), color="blue") +
+  scale_y_log10() +
+  ylab("confirmations")
+```
+
+Log scale of confirmed cases and deaths from COVID-19 globally. We can see that they essentially follow the same trends, which makes sense. Recoveries actually seem to grow faster than deaths, which is heartening and expected.
+
+### COVID-19 and Brent Crude Oil
+
+```{r}
+global <-
+  global %>%
+    mutate(confirmed_delta = (confirmed/lag(confirmed)-1)*100,
+         deaths_delta = (deaths/lag(deaths)-1)*100,
+         recovered_delta = (recovered/lag(recovered)-1)*100)
+
+brent <-
+  brent %>%
+    mutate(close_delta = (close/lag(close)-1)*100)
+
+global %>%
+  ggplot(aes(x=date)) +
+    geom_area(aes(y=confirmed_delta), fill = "blue", alpha = 0.5) +
+    geom_area(data = brent, aes(date, close_delta), fill = "green", alpha = 0.5) +
+    scale_y_log10() +
+    ylab("percent change")
+```
+
+In this graph, it's hard to see any correlation between percent change in COVID-19 confirmed cases and Brent Crude Oil prices. Let's try again.
+
+```{r}
+covid19 %>%
+  filter(country.region=="China") %>%
+  group_by(date) %>%
+  summarise(confirmed=sum(confirmed)) %>%
+  mutate(confirmed_delta = (confirmed/lag(confirmed)-1)*100) %>%
+  ggplot(aes(date)) +
+    geom_area(aes(y=confirmed_delta), fill="blue", alpha = 0.5) +
+    geom_area(data = brent, aes(date, close_delta), fill="red", alpha = 0.5) +
+    scale_y_log10() +
+    ylab("percent change")
+```
+
+This one's interesting, because you can see more of a negative relationship between percent change in close prices and China's confirmed cases (scaled by log10).
