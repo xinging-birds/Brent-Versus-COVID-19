@@ -1,0 +1,11 @@
+name: "EDA: Brent versus COVID-19"
+output_dir: "docs"
+navbar:
+  title: "Brent versus COVID-19"
+  left:
+  - text: "Home"
+   href: eda.html
+output:
+  html_document:
+    theme: cosmo
+

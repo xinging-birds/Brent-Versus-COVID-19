@@ -1,22 +1,21 @@
 ---
-title: "EDA: COVID-19 and Brent Crude Oil"
+title: 'EDA: COVID-19 and Brent Crude Oil'
 author: "Justin Huang and So I Kwak"
-output: 
-  html_notebook:
-    fig_height: 6
-    fig_width: 15
+date: 4-12-2020
 ---
 
-## Libraries
+# Libraries
 
 ```{r message=FALSE, warning=FALSE}
 rm(list=ls())
 
-# install.packages(c("tidyquant", "car", "cowplot"))
+# install.packages(c("tidyquant", "car", "cowplot", "wrapr", "Hmisc"))
 library(tidyverse)
 library(tidyquant)
 library(car)
 library(cowplot)
+library(wrapr)
+library(Hmisc)
 ```
 
 # Guiding Question
@@ -117,7 +116,7 @@ We have one categorical variable (date) and the rest are quantitative variables 
 
 #### Global Comparison
 
-```{r}
+```{r fig.height=6, fig.width=12, warning=FALSE}
 COVID19 %>%
   filter(country.region %in% c("US", "China", "Korea, South", "Italy")) %>%
   group_by(country.region, date) %>%
@@ -131,7 +130,7 @@ Log scale of coronavirus cases in China, Italy, South Korea and the United State
 
 #### Confirmed, Deaths, Recoveries
 
-```{r}
+```{r fig.height=6, fig.width=12, warning=FALSE}
 Global <- 
   COVID19 %>%
     group_by(date) %>%
@@ -149,7 +148,7 @@ Log scale of confirmed cases and deaths from COVID-19 globally. We can see that 
 
 ### Brent Crude Oil
 
-```{r}
+```{r fig.height=6, fig.width=12, warning=FALSE}
 Brent %>%
   ggplot(aes(date, close)) +
     geom_line() +
@@ -163,7 +162,7 @@ Despite its hardships, it's also begun to rebound well since the beginning of Ap
 
 One key thing to note about the price of Brent crude is the price war between Russia and OPEC that first started on March 6, when Russia refused to cut production in conjunction with Saudia Arabia because of a sharp fall in demand because of COVID-19 and stay-at-home procedures. While an agreement between Russia and Saudi Arabia was reached on April 9 to cut production by 10 million barrels per day, the situation is still evolving because of a lack of commitment from Mexico (source: [Bloomberg](https://www.bloomberg.com/news/articles/2020-04-10/mexico-reaches-oil-output-cuts-agreement-with-opec-and-trump)).
 
-```{r}
+```{r fig.height=6, fig.width=12, warning=FALSE}
 Brent %>%
   ggplot(aes(date, adjusted)) +
     geom_line(color = "red") +
@@ -179,9 +178,17 @@ In any case, the sharp fall in Brent futures prices in early March may be attrib
 
 While this price war was certainly caused by a fall in demand due to COVID-19, it's important to keep this information in mind moving forward.
 
-### COVID-19 and Brent Crude Oil
+Oh, and we should probably know how much Brent fell at its worst.
 
 ```{r}
+(min(Brent$close) - max(Brent$close)) / max(Brent$close)
+```
+
+Down -64%? Cool!
+
+### COVID-19 and Brent Crude Oil
+
+```{r fig.height=6, fig.width=12, warning=FALSE}
 Global <-
   Global %>%
     mutate(confirmed_delta = (confirmed/lag(confirmed)-1)*100,
@@ -202,7 +209,7 @@ Global %>%
 
 In this graph, it's hard to see any correlation between percent change in COVID-19 confirmed cases and Brent Crude Oil prices. Let's try again.
 
-```{r}
+```{r fig.height=6, fig.width=12, warning=FALSE}
 COVID19 %>%
   filter(country.region=="China") %>%
   group_by(date) %>%
@@ -221,25 +228,43 @@ This one's interesting, because you can see more of a negative relationship betw
 
 When modeling populations and growth, the logistic growth model becomes very handy. In the following examples, we will first use Hubei, China as an example of how the logistic growth model matches up with our data, and then project values for Italy and US. We'll also see how the data matches with Brent.
 
-## Hubei, China
-
 ```{r}
-logistic_model = function(nls_model, xvar, df) {
+logistic_model = function(xvariable, yvariable, asym, df) {
+  #xvar <- enquo(xvar)
+  #yvar <- enquo(yvar)
+  let(
+    c(xvar=xvariable, yvar=yvariable),
+    {
+      start <- coef(lm(logit(yvar / 100) ~ xvar, data = df))
+      
+      nls_model <- nls(yvar ~ phi1 / (1 + exp(-(phi2 + phi3 * xvar))),
+                       start = list(phi1 = asym, phi2 = start[[1]], phi3=start[[2]]), 
+                       data = df)
+      
+      rss <- sum(residuals(nls_model)^2)
+      tss <- sum((df$yvar - mean(df$yvar))^2)
+      r2 <- abs(tss-rss)/tss # Calculation of r^2
+    }
+  )
+      
   # Values for the logistic growth model
   phi1 <- coef(nls_model)[1]
   phi2 <- coef(nls_model)[2]
   phi3 <- coef(nls_model)[3]
   
   # Get x value range
-  x <- c(min(df[xvar]):(max(df[xvar])+50))
-  
+  x <- c(min(df[xvariable]):(max(df[xvariable])+50))
+      
   # Construct model return values and return the resulting data frame
   y <- phi1 / (1 + exp(-(phi2 + phi3 * x)))
-  return(data.frame(x, y)) 
+  
+  return(list(data.frame(x, y), r2))
 }
 ```
 
-Function inspired by the logistic growth model example by [Brian Cheng](https://bscheng.com/2014/05/07/modeling-logistic-growth-data-in-r/). The actual creation of the logit model by `nls()` is omitted from the function because creating complicated formulas using strings is hard :(.
+The function above is inspired by the logistic growth model example by [Brian Cheng](https://bscheng.com/2014/05/07/modeling-logistic-growth-data-in-r/). 
+
+## Hubei, China
 
 ```{r}
 brent_graph <- 
@@ -251,35 +276,29 @@ brent_graph <-
       theme_minimal()
 ```
 
-```{r}
+```{r fig.height=6, fig.width=12, warning=FALSE}
 Hubei <-
   COVID19 %>%
     filter(province.state=="Hubei") %>%
     mutate(datediff = as.numeric(date - mdy("1-22-2020")))
 
-start <- coef(lm(logit(confirmed/100) ~ datediff, data = Hubei)) 
-
-# Important to note that the asymptote, 100000, was an assumption
-hubei_nls <- nls(confirmed ~ phi1 / (1 + exp(-(phi2 + phi3 * datediff))),
-                  start = list(phi1 = 100000, phi2 = start[[1]], phi3=start[[2]]), 
-                  data = Hubei)
-
-hubei_logit <- logistic_model(hubei_nls, "datediff", Hubei)
+# See function definition above.
+hubei_logit <- logistic_model("datediff", "confirmed", 100000, Hubei)
 
 hubei_graph <-
   Hubei %>%
     ggplot(aes(datediff, confirmed))+
       geom_point(color='blue') +
       labs(x='Days Since 1-22-2020', y='Confirmed Cases')+
-      geom_line(data=hubei_logit, aes(x, y)) +
-      geom_vline(aes(xintercept=10), linetype = 3) +
+      geom_line(data=hubei_logit[[1]], aes(x, y)) +
+      geom_vline(aes(xintercept=0), linetype = 3) +
       geom_vline(aes(xintercept=40), linetype = 3) +
       xlim(0, 60) +
       theme_minimal()
 
 plot_grid(hubei_graph, 
           brent_graph +
-          geom_vline(aes(xintercept=10), linetype = 3) +
+          geom_vline(aes(xintercept=0), linetype = 3) +
           geom_vline(aes(xintercept=40), linetype = 3) +
           xlim(0, 60))
 ```
@@ -288,38 +307,29 @@ This Hubei examples exists to show that the logistic growth model seems to fit C
 well&mdash;visually, at least. Let's check that it actually works.
 
 ```{r}
-rss <- sum(residuals(hubei_nls)^2)
-tss <- sum((Hubei$confirmed - mean(Hubei$confirmed))^2)
-abs(tss-rss)/tss # Calculation of r^2
+hubei_logit[[2]]
 ```
 
 That's a beautiful r-squared value. 
 
-Interestingly, there is little effect on the Brent Crude price, since in the range where the cases grew the most, there was almost no net change in Brent Crude up to day 30 (since the prices rebounded) and then began to dip as cases in China began to stabilize. So what *did* affect the oil price?
+Interestingly, there is little effect on the Brent Crude price, since in the range where the cases grew the most, there was almost no net change in Brent Crude up to day 30 (since the prices rebounded) and then began to dip as cases in China began to stabilize. Yes, there is a significant dip, but that came *after* the majority of the growth in Chinese cases. So what *did* affect the oil price?
 
 ## Italy
 
-```{r}
+```{r fig.height=6, fig.width=12, warning=FALSE}
 Italy <-
   COVID19 %>%
     filter(country.region=="Italy") %>%
     mutate(datediff = as.numeric(date - mdy("1-22-2020")))
 
-start <- coef(lm(logit(confirmed/100) ~ datediff, data = Italy)) 
-
-# Important to note that the carrying capacity asymptote, 100000, was an assumption
-italy_nls <- nls(confirmed ~ phi1 / (1 + exp(-(phi2 + phi3 * datediff))),
-              start = list(phi1 = 10000000, phi2 = start[[1]], phi3=start[[2]]), 
-              data = Italy)
-
-italy_logit <- logistic_model(italy_nls, "datediff", America)
+italy_logit <- logistic_model("datediff", "confirmed", 1000000, Italy)
 
 italy_graph <-
   Italy %>%
     ggplot(aes(datediff, confirmed))+
       geom_point(color='blue') +
       labs(x='Days Since 1-22-2020', y='Confirmed Cases') +
-      geom_line(data=italy_logit, aes(x, y)) +
+      geom_line(data=italy_logit[[1]], aes(x, y)) +
       geom_vline(aes(xintercept=37.5), linetype=3) +
       geom_vline(aes(xintercept=90), linetype=3) +
       xlim(0, 120) +
@@ -327,21 +337,19 @@ italy_graph <-
 
 plot_grid(italy_graph, brent_graph + geom_vline(aes(xintercept=37.5), linetype=3))
 
-rss <- sum(residuals(italy_nls)^2)
-tss <- sum((Italy$confirmed - mean(Italy$confirmed))^2)
-abs(tss-rss)/tss # Calculation of r^2
+italy_logit[[2]]
 ```
 
 On a more fundamental level, Italy was the first indication of how much of an impact the coronavirus would have on the Western world, which sent a lot of markets into a frenzy. The dashed line indicates the day that cases began picking up, and we also observe that prices began dropping rapidly. Once again, we make the clarification that the Russia-OPEC price war drove those prices to the ground, but Italy was the sign that things were going to be bad.
 
 Back to real statistics now. The r-squared value is indeed high, but some may be dissuaded by the divergence of the model's projections from the last recorded value of confirmed cases in Italy. From there, we turn to the logarithmically-scaled values to double-check.
 
-```{r}
+```{r fig.height=6, fig.width=12, warning=FALSE}
 Italy %>%
   ggplot(aes(datediff, confirmed)) +
     geom_line(color="blue") +
     scale_y_log10() +
-    geom_line(data=italy_logit, aes(x, y), color="red") +
+    geom_line(data=italy_logit[[1]], aes(x, y), color="red") +
     theme_minimal()
 ```
 
@@ -349,37 +357,29 @@ And the tail of the recorded cases almost perfectly matches the curve of the log
 
 ## US
 
-```{r}
+```{r fig.height=6, fig.width=12, warning=FALSE}
 America <-
   COVID19 %>%
     filter(country.region=="US") %>%
     mutate(datediff = as.numeric(date - mdy("1-22-2020")))
 
-start <- coef(lm(logit(confirmed/100) ~ datediff, data = America)) 
-
-us_nls <- nls(confirmed ~ phi1 / (1 + exp(-(phi2 + phi3 * datediff))),
-              start = list(phi1 = 150000000, phi2 = start[[1]], phi3=start[[2]]), 
-              data = America)
-
-us_logit <- logistic_model(us_nls, "datediff", America)
+us_logit <- logistic_model("datediff", "confirmed", 150000000, America)
 
 us_graph <-
   America %>%
     ggplot(aes(datediff, confirmed))+
       geom_point(color='blue') +
       labs(x='Days Since 1-22-2020', y='Confirmed Cases') +
-      geom_line(data=us_logit, aes(x, y)) +
+      geom_line(data=us_logit[[1]], aes(x, y)) +
       geom_vline(aes(xintercept=50), linetype=3) +
-      geom_vline(aes(xintercept=72), color = "green") +
+      geom_vline(aes(xintercept=72), color = "lightblue") +
       geom_vline(aes(xintercept=95), linetype=3) +
       xlim(40, 120) +
       theme_minimal()
 
-plot_grid(us_graph, brent_graph + geom_vline(aes(xintercept=72), color="green") + xlim(40, 80))
+plot_grid(us_graph, brent_graph + geom_vline(aes(xintercept=72), color="lightblue") + xlim(40, 80))
 
-rss <- sum(residuals(us_nls)^2)
-tss <- sum((America$confirmed - mean(America$confirmed))^2)
-abs(tss-rss)/tss # Calculation of r^2
+us_logit[[2]]
 ```
 
 The r-squared value is almost too perfect. 
@@ -400,3 +400,54 @@ I can't say exactly how great that projection is because it assumes:
 * The status quo will not change (in this case, social distancing and stay-at-home orders)
 
 Moving on, lookin at the comparison betweeen America and Brent Crude futures prices, while the downfall of Brent did occur during the rise of cases in America, we still keep in mind that the fall was driven a lot by the price war in Saudi Arabia and Russia. That being said, the skyrocketing cases in America most likely did play a role in the fall of Brent crude oil because of the financial superpower in the country.
+
+## Global
+
+The logistic model is a little difficult to use in this case because of nonlinear parameter estimation, so we'll use the classic smoother instead.
+
+```{r fig.height=6, fig.width=12, warning=FALSE}
+global_graph <-
+  Global %>%
+    mutate(datediff = as.numeric(date - mdy("1-22-2020"))) %>%
+    pivot_longer(cols=c(confirmed, deaths, recovered), names_to="type", values_to="count") %>%
+    ggplot(aes(date, count, color=type))+
+      geom_point() +
+      geom_smooth(span = 0.5) +
+      labs(x='Days Since 1-22-2020', y='Confirmed Cases') +
+      theme_minimal()
+
+plot_grid(global_graph, brent_graph)
+```
+
+A normal stat smooth seems to overfit the data. The confidence bands are "missing" because they're actually so tiny that you can't see them&mdash;another bad sign of overfitting the data.
+
+```{r fig.height=6, fig.width=12, warning=FALSE}
+Global %>%
+  mutate(datediff = as.numeric(date - mdy("1-22-2020"))) %>%
+  pivot_longer(cols=c(confirmed, deaths, recovered), names_to="type", values_to="count") %>%
+  ggplot(aes(date, count, color=type))+
+    geom_point() +
+    # This is an insane confidence level, yet the bands are just barely visible.
+    geom_smooth(span = 0.5, level=0.999999999999999) +
+    labs(x='Days Since 1-22-2020', y='Confirmed Cases') +
+    theme_minimal() +
+    scale_y_log10()
+```
+
+Even on a logarithmic scale, the problem is still there.
+
+# Conclusion
+
+Recall that our original guiding question revolves around the analysis of effects of COVID-19 cases on Brent crude oil futures prices.
+
+We've examined historical data from COVID-19 recorded cases and Brent crude oil futures prices. From our analysis, we can see that Brent fell 64% at its worst as COVID-19 confirmed cases around the world climbed higher and higher. Fundamentally, this can be explained by a severe demand crash in oil as people stopped traveling and stayed at home instead. We also know that the Russia-OPEC price war severely affected the confidence in Brent as they began ramping up production instead of cutting it&mdash;although that problem will be resolved soon, by the looks of it.
+
+Statistically, we want to project how COVID-19 will affect the world in the near future. To that end, we used the logistic growth model to model our confirmed cases. First, we showed its fit on Hubei data, which had an extremely high r-squared value, and oil prices began showing signs of dropping. Then we have Italy, the first serious foray of COVID-19 into the Western world, and the United States. In the period where Italian cases were beginning to severely rise, oil prices began to drop rapidly, and the trend continued in almost a staircase pattern once cases in the United States began rising rapidly.
+
+However, there's going to be an end to all of the cases. In fact, Italy seems to be reaching its peak extremely, extremely soon, while America will follow in late April. Once those numbers begin stabilizing (approach the asymptote of the logistic model's asymptote), we may see an increase in Brent crude oil futures prices once again as they stabilize.
+
+It's important to note the limitations of the logistic growth model used in projections. The most important one is the assumption of stasis in conditions used in coronavirus prevention&mdash;namely, social distancing. If we were to resume normal conditions prematurely, the logistic growth model used here would no longer apply, since the carrying capacity would suddenly increase as more virus exposure becomes possible. 
+
+The model also heavily relies on accurate data reporting by global health organizations, as they are the ones providing the data (compiled by Johns Hopkins). This doesn't necessarily mean that they are purposefully lowering the numbers, but that there are other unreported cases by people who do not go to the appropriate healthcare infrastructure, or simply not classified as infected yet.
+
+In any case, we conclude that the rise of the coronavirus since January has severely affected Brent crude oil futures prices, mixed in with current events and investor confidence, but according to our projections, we may see Brent crude stabilize towards the end of the month as COVID-19 confirmed cases begin to plateau, so long as we maintain the current prevention measures.
