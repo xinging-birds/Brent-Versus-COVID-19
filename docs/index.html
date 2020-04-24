@@ -290,7 +290,7 @@ $(document).ready(function () {
 
 <h1 class="title toc-ignore">EDA: COVID-19 and Brent Crude Oil</h1>
 <h4 class="author">Justin Huang and So I Kwak</h4>
-<h4 class="date">4-12-2020</h4>
+<h4 class="date">4-23-2020</h4>
 
 </div>
 
@@ -304,17 +304,16 @@ library(tidyverse)
 library(tidyquant)
 library(car)
 library(cowplot)
-library(wrapr)
-library(Hmisc)</code></pre>
+library(wrapr)</code></pre>
 </div>
 <div id="guiding-question" class="section level1">
 <h1>Guiding Question</h1>
 <p>Has the advent of COVID-19 had a significant impact on futures prices for Brent Crude Oil? If so, how has it been affected and where might it go in the foreseeable future?</p>
 </div>
-<div id="primary-data-covid-19-cases" class="section level1">
-<h1>Primary data: COVID-19 Cases</h1>
-<div id="load-global-data" class="section level3">
-<h3>Load Global Data</h3>
+<div id="tidy-data" class="section level1">
+<h1>Tidy Data</h1>
+<div id="primary-data-covid-19-cases" class="section level3">
+<h3>Primary data: COVID-19 Cases</h3>
 <p><em>uses absolute file paths, change for your system</em></p>
 <pre class="r"><code>dir = &quot;~/Development/stat184/brent-covid-19/COVID-19/csse_covid_19_data/csse_covid_19_time_series&quot;
 
@@ -350,40 +349,39 @@ COVID19 &lt;-
              &quot;long&quot;=&quot;Long&quot;)) %&gt;%
     mutate(date = lubridate::mdy(gsub(pattern = &quot;^X&quot;, replacement=&quot;&quot;, date)))</code></pre>
 <pre><code>## Warning: Column `Province.State` joining factors with different levels, coercing to character vector</code></pre>
-</div>
-<div id="summary-of-primary-data" class="section level3">
-<h3>Summary of Primary Data</h3>
+<div id="summary-of-primary-data" class="section level4">
+<h4>Summary of Primary Data</h4>
 <pre class="r"><code>summary(COVID19)</code></pre>
 <pre><code>##  province.state            country.region       lat               long              date              confirmed     
-##  Length:21120       China         : 2640   Min.   :-51.796   Min.   :-135.00   Min.   :2020-01-22   Min.   :     0  
-##  Class :character   Canada        : 1200   1st Qu.:  6.969   1st Qu.: -20.03   1st Qu.:2020-02-10   1st Qu.:     0  
-##  Mode  :character   France        :  880   Median : 23.488   Median :  20.54   Median :2020-03-01   Median :     1  
-##                     United Kingdom:  880   Mean   : 21.317   Mean   :  22.17   Mean   :2020-03-01   Mean   :  1122  
-##                     Australia     :  640   3rd Qu.: 41.166   3rd Qu.:  78.75   3rd Qu.:2020-03-21   3rd Qu.:    78  
-##                     Netherlands   :  400   Max.   : 71.707   Max.   : 178.06   Max.   :2020-04-10   Max.   :496535  
-##                     (Other)       :14480                                                                            
-##      deaths           recovered      
-##  Min.   :    0.00   Min.   :    0.0  
-##  1st Qu.:    0.00   1st Qu.:    0.0  
-##  Median :    0.00   Median :    0.0  
-##  Mean   :   55.37   Mean   :  292.2  
-##  3rd Qu.:    1.00   3rd Qu.:    5.0  
-##  Max.   :18849.00   Max.   :64236.0  
-##                     NA&#39;s   :1200</code></pre>
+##  Length:24552       China         : 3069   Min.   :-51.796   Min.   :-135.00   Min.   :2020-01-22   Min.   :    -1  
+##  Class :character   Canada        : 1395   1st Qu.:  6.969   1st Qu.: -20.03   1st Qu.:2020-02-14   1st Qu.:     0  
+##  Mode  :character   France        : 1023   Median : 23.488   Median :  20.54   Median :2020-03-08   Median :     4  
+##                     United Kingdom: 1023   Mean   : 21.317   Mean   :  22.17   Mean   :2020-03-08   Mean   :  2137  
+##                     Australia     :  744   3rd Qu.: 41.166   3rd Qu.:  78.75   3rd Qu.:2020-03-31   3rd Qu.:   160  
+##                     Netherlands   :  465   Max.   : 71.707   Max.   : 178.06   Max.   :2020-04-23   Max.   :869170  
+##                     (Other)       :16833                                                                            
+##      deaths          recovered       
+##  Min.   :   -1.0   Min.   :     0.0  
+##  1st Qu.:    0.0   1st Qu.:     0.0  
+##  Median :    0.0   Median :     0.0  
+##  Mean   :  126.9   Mean   :   563.2  
+##  3rd Qu.:    2.0   3rd Qu.:    23.0  
+##  Max.   :49954.0   Max.   :103300.0  
+##                    NA&#39;s   :1395</code></pre>
 <pre class="r"><code>tail(COVID19)</code></pre>
 <pre><code>## # A tibble: 6 x 8
 ##   province.state country.region   lat  long date       confirmed deaths recovered
 ##   &lt;chr&gt;          &lt;fct&gt;          &lt;dbl&gt; &lt;dbl&gt; &lt;date&gt;         &lt;int&gt;  &lt;int&gt;     &lt;int&gt;
-## 1 &quot;&quot;             Yemen           15.6  48.5 2020-04-05         0      0         0
-## 2 &quot;&quot;             Yemen           15.6  48.5 2020-04-06         0      0         0
-## 3 &quot;&quot;             Yemen           15.6  48.5 2020-04-07         0      0         0
-## 4 &quot;&quot;             Yemen           15.6  48.5 2020-04-08         0      0         0
-## 5 &quot;&quot;             Yemen           15.6  48.5 2020-04-09         0      0         0
-## 6 &quot;&quot;             Yemen           15.6  48.5 2020-04-10         1      0         0</code></pre>
+## 1 &quot;&quot;             Yemen           15.6  48.5 2020-04-18         1      0         0
+## 2 &quot;&quot;             Yemen           15.6  48.5 2020-04-19         1      0         0
+## 3 &quot;&quot;             Yemen           15.6  48.5 2020-04-20         1      0         0
+## 4 &quot;&quot;             Yemen           15.6  48.5 2020-04-21         1      0         0
+## 5 &quot;&quot;             Yemen           15.6  48.5 2020-04-22         1      0         0
+## 6 &quot;&quot;             Yemen           15.6  48.5 2020-04-23         1      0         0</code></pre>
 <p>We have three categorical variables (province.state, country.region, date) and three quantitative variables that describe the number of people affected by the coronavirus (confirmed, deaths, recovered). Additionally, we have lat and long but I declined to include these as they’re not extremely pertinent to the overall analysis.</p>
 </div>
-<div id="analysis" class="section level3">
-<h3>Analysis</h3>
+<div id="analysis" class="section level4">
+<h4>Analysis</h4>
 <ul>
 <li>Data found from the JHU COVID-19 repo <a href="https://github.com/CSSEGISandData/COVID-19">here</a>; forked and included as a submodule in this repository</li>
 <li>Collected by the Johns Hopkins CSSE group, sourced by various health organizations arouond the world</li>
@@ -393,10 +391,11 @@ COVID19 &lt;-
 </ul>
 </div>
 </div>
-<div id="secondary-data" class="section level1">
-<h1>Secondary Data</h1>
-<div id="load-brent-crude-oil" class="section level3">
-<h3>Load Brent Crude Oil</h3>
+</div>
+<div id="secondary-data-brent-crude-oil" class="section level1">
+<h1>Secondary Data: Brent Crude Oil</h1>
+<div id="load-brent-crude-oil" class="section level4">
+<h4>Load Brent Crude Oil</h4>
 <pre class="r"><code>Brent &lt;- 
   tq_get(&quot;BZ=F&quot;, from=mdy(&quot;1.22.2020&quot;)) %&gt;%
     select(-symbol) %&gt;%
@@ -404,37 +403,37 @@ COVID19 &lt;-
     drop_na()</code></pre>
 <p>Conveniently, this is already in tidy form, so there’s a lot less data wrangling to initially do.</p>
 </div>
-<div id="summary-of-secondary-data" class="section level3">
-<h3>Summary of Secondary Data</h3>
+<div id="summary-of-secondary-data" class="section level4">
+<h4>Summary of Secondary Data</h4>
 <pre class="r"><code>tail(Brent)</code></pre>
 <pre><code>## # A tibble: 6 x 7
 ##   date        open  high   low close   volume adjusted
 ##   &lt;date&gt;     &lt;dbl&gt; &lt;dbl&gt; &lt;dbl&gt; &lt;dbl&gt;    &lt;dbl&gt;    &lt;dbl&gt;
-## 1 2020-04-02  27.2  32.6  26.0  29.8 25611657     29.8
-## 2 2020-04-03  28.9  35    28.3  34.8 26017704     34.8
-## 3 2020-04-06  33.4  34.2  31.9  33.7 15708495     33.7
-## 4 2020-04-07  33.9  34.2  31.7  32.7 13950604     32.7
-## 5 2020-04-08  32.7  33.9  31.5  33.8 13377399     33.8
-## 6 2020-04-09  33.4  36.4  31.2  31.9 18329230     31.9</code></pre>
+## 1 2020-04-17  28.4  28.8  27.6  28.3 15083581     28.3
+## 2 2020-04-19  27.9  27.9  27.7  27.8     5765     27.8
+## 3 2020-04-20  27.8  27.9  25.4  26.3 18295326     26.3
+## 4 2020-04-21  25.4  25.5  17.5  20.4 36595637     20.4
+## 5 2020-04-22  16.9  20    16    19.5  5462840     19.5
+## 6 2020-04-23  21.1  23.0  20.9  22.1 17060411     22.1</code></pre>
 <pre class="r"><code>summary(Brent)</code></pre>
 <pre><code>##       date                 open            high            low            close           volume        
-##  Min.   :2020-01-22   Min.   :23.16   Min.   :23.67   Min.   :21.69   Min.   :22.72   Min.   :     901  
-##  1st Qu.:2020-02-10   1st Qu.:32.36   1st Qu.:33.94   1st Qu.:29.82   1st Qu.:31.97   1st Qu.: 6199791  
-##  Median :2020-03-01   Median :52.68   Median :53.08   Median :51.05   Median :51.62   Median :13709894  
-##  Mean   :2020-02-29   Mean   :45.10   Mean   :46.00   Mean   :43.61   Mean   :44.70   Mean   :12986775  
-##  3rd Qu.:2020-03-19   3rd Qu.:56.89   3rd Qu.:57.38   3rd Qu.:56.00   3rd Qu.:56.80   3rd Qu.:18290329  
-##  Max.   :2020-04-09   Max.   :64.34   Max.   :64.39   Max.   :62.62   Max.   :62.76   Max.   :39116318  
+##  Min.   :2020-01-22   Min.   :16.90   Min.   :20.00   Min.   :16.00   Min.   :19.50   Min.   :     901  
+##  1st Qu.:2020-02-13   1st Qu.:28.86   1st Qu.:30.06   1st Qu.:27.20   1st Qu.:28.46   1st Qu.: 6166008  
+##  Median :2020-03-09   Median :38.44   Median :38.56   Median :34.97   Median :36.01   Median :13532692  
+##  Mean   :2020-03-07   Mean   :42.47   Mean   :43.32   Mean   :40.88   Mean   :42.01   Mean   :12977746  
+##  3rd Qu.:2020-03-30   3rd Qu.:56.23   3rd Qu.:56.83   3rd Qu.:54.84   3rd Qu.:56.00   3rd Qu.:18173626  
+##  Max.   :2020-04-23   Max.   :64.34   Max.   :64.39   Max.   :62.62   Max.   :62.76   Max.   :39116318  
 ##     adjusted    
-##  Min.   :22.72  
-##  1st Qu.:31.97  
-##  Median :51.62  
-##  Mean   :44.70  
-##  3rd Qu.:56.80  
+##  Min.   :19.50  
+##  1st Qu.:28.46  
+##  Median :36.01  
+##  Mean   :42.01  
+##  3rd Qu.:56.00  
 ##  Max.   :62.76</code></pre>
 <p>We have one categorical variable (date) and the rest are quantitative variables (OHLC values, volume, adjusted close). You’ll notice that there were a good amount of NA rows because trading wasn’t available on that specific day, so we cleaned those up.</p>
 </div>
-<div id="analysis-1" class="section level3">
-<h3>Analysis</h3>
+<div id="analysis-1" class="section level4">
+<h4>Analysis</h4>
 <ul>
 <li>Data found using the <code>tidyquant</code> package API which pulls from Yahoo Finance</li>
 <li>Yahoo Finance maintains the data</li>
@@ -487,7 +486,7 @@ Global %&gt;%
 <p><img src="index_files/figure-html/unnamed-chunk-8-1.png" width="1152" /></p>
 <p>We can see that Brent crude oil futures prices tanked starting in January. I wonder what happened? Hmm.</p>
 <p>Despite its hardships, it’s also begun to rebound well since the beginning of April.</p>
-<p>One key thing to note about the price of Brent crude is the price war between Russia and OPEC that first started on March 6, when Russia refused to cut production in conjunction with Saudia Arabia because of a sharp fall in demand because of COVID-19 and stay-at-home procedures. While an agreement between Russia and Saudi Arabia was reached on April 9 to cut production by 10 million barrels per day, the situation is still evolving because of a lack of commitment from Mexico (source: <a href="https://www.bloomberg.com/news/articles/2020-04-10/mexico-reaches-oil-output-cuts-agreement-with-opec-and-trump">Bloomberg</a>).</p>
+<p>One key thing to note about the price of Brent crude is the price war between Russia and OPEC that first started on March 6, when Russia refused to cut production in conjunction with Saudia Arabia because of a sharp fall in demand because of COVID-19 and stay-at-home procedures. An agreement between Saudi Arabia and Russia has since been reached, but it has helped very little with investor confidence, as we see Brent prices drop significantly close to April expiration.</p>
 <pre class="r"><code>Brent %&gt;%
   ggplot(aes(date, adjusted)) +
     geom_line(color = &quot;red&quot;) +
@@ -495,15 +494,15 @@ Global %&gt;%
     geom_vline(aes(xintercept=mdy(&quot;3-6-2020&quot;)), linetype=3) +
     geom_vline(aes(xintercept=mdy(&quot;3-31-2020&quot;)), linetype=3) +
     geom_vline(aes(xintercept=mdy(&quot;4-9-2020&quot;)), linetype=3) +
-    xlim(mdy(&quot;3-1-2020&quot;), mdy(&quot;4-9-2020&quot;)) +
+    xlim(mdy(&quot;3-1-2020&quot;), mdy(&quot;4-23-2020&quot;)) +
     theme_tq()</code></pre>
 <p><img src="index_files/figure-html/unnamed-chunk-9-1.png" width="1152" /></p>
-<p>In any case, the sharp fall in Brent futures prices in early March may be attributed to the Russia-OPEC feud, and the rebound in early April may be due to news about talks of slashing production by 20 million barrels per day. Note particularly that on April 9, the high value and close are significantly further apart because of a rise in prices from the agreement, and subsequent fall after hearing about Mexico and possibly that production was only cut by 10 million barrels per day, which some investors may deem to be too conservative.</p>
+<p>In any case, the sharp fall in Brent futures prices in early March may be attributed to the Russia-OPEC feud, and the rebound in early April may be due to news about talks of slashing production by 20 million barrels per day. After that, Brent experienced a significant drop because of fear around April expiration and physical delivery of oil (West Texas Intermediate actually went negative).</p>
 <p>While this price war was certainly caused by a fall in demand due to COVID-19, it’s important to keep this information in mind moving forward.</p>
 <p>Oh, and we should probably know how much Brent fell at its worst.</p>
 <pre class="r"><code>(min(Brent$close) - max(Brent$close)) / max(Brent$close)</code></pre>
-<pre><code>## [1] -0.637986</code></pre>
-<p>Down -64%? Cool!</p>
+<pre><code>## [1] -0.6892925</code></pre>
+<p>Down -69%? Not good.</p>
 </div>
 <div id="covid-19-and-brent-crude-oil" class="section level3">
 <h3>COVID-19 and Brent Crude Oil</h3>
@@ -518,25 +517,29 @@ Brent &lt;-
     mutate(close_delta = (close/lag(close)-1)*100)
 
 Global %&gt;%
-  ggplot(aes(x=date)) +
-    geom_area(aes(y=confirmed_delta), fill = &quot;blue&quot;, alpha = 0.5) +
-    geom_area(data = Brent, aes(date, close_delta), fill = &quot;green&quot;, alpha = 0.5) +
-    scale_y_log10() +
-    ylab(&quot;percent change&quot;)</code></pre>
+  left_join(Brent %&gt;% select(date, close_delta), by = c(&#39;date&#39;=&#39;date&#39;)) %&gt;%
+  slice(-1) %&gt;%  # Get rid of first row, since it&#39;s all lagged NA
+  select(date, confirmed_delta, deaths_delta, recovered_delta, close_delta) %&gt;%
+  pivot_longer(cols=c(&quot;confirmed_delta&quot;, &quot;deaths_delta&quot;, &quot;recovered_delta&quot;, &quot;close_delta&quot;), 
+               names_to=&quot;delta_type&quot;, 
+               values_to=&quot;delta_value&quot;) %&gt;%
+  ggplot(aes(x=delta_value)) +
+    geom_boxplot(aes(color = delta_type)) +
+    geom_density(aes(color = delta_type)) +
+    facet_wrap(~delta_type)</code></pre>
 <p><img src="index_files/figure-html/unnamed-chunk-11-1.png" width="1152" /></p>
-<p>In this graph, it’s hard to see any correlation between percent change in COVID-19 confirmed cases and Brent Crude Oil prices. Let’s try again.</p>
+<p>While comparing the distribution of percent change between Brent Crude close prices, confirmed cases, deaths and recovered cases, nothing noteworthy jumps out.</p>
 <pre class="r"><code>COVID19 %&gt;%
-  filter(country.region==&quot;China&quot;) %&gt;%
-  group_by(date) %&gt;%
-  summarise(confirmed=sum(confirmed)) %&gt;%
-  mutate(confirmed_delta = (confirmed/lag(confirmed)-1)*100) %&gt;%
+  filter(country.region==&quot;Italy&quot;) %&gt;%
+  left_join(Brent %&gt;% select(date, close), by = c(&#39;date&#39;=&#39;date&#39;)) %&gt;%
+  mutate(close = close * 2000) %&gt;%
   ggplot(aes(date)) +
-    geom_area(aes(y=confirmed_delta), fill=&quot;blue&quot;, alpha = 0.5) +
-    geom_area(data = Brent, aes(date, close_delta), fill=&quot;red&quot;, alpha = 0.5) +
-    scale_y_log10() +
-    ylab(&quot;percent change&quot;)</code></pre>
+    geom_area(aes(y=confirmed), fill=&quot;blue&quot;, alpha = 0.5) +
+    geom_area(aes(y=close), fill=&quot;red&quot;, alpha = 0.5) +
+    geom_vline(aes(xintercept = mdy(&quot;2-29-2020&quot;)),linetype=3) +
+    ylab(&quot;Italy COVID-19 v. Brent Crude&quot;)</code></pre>
 <p><img src="index_files/figure-html/unnamed-chunk-12-1.png" width="1152" /></p>
-<p>This one’s interesting, because you can see more of a negative relationship between percent change in close prices and China’s confirmed cases (scaled by log10). However, this might be a red herring because the actual percent change of China in March and April is close to 0, and we all know that log(0) is not pretty.</p>
+<p>In this more basic graph, we have blue COVID-19 cases in Italy compared to the red Brent Crude close prices (multiplied by 2000—only need to see the general pattern). The sharpest decline occurred when Italy’s cases began to increase, which may not be related, but Italy’s seen as the first significant foray of COVID-19 into the Western hemisphere.</p>
 </div>
 </div>
 <div id="eda-projections" class="section level1">
@@ -610,7 +613,7 @@ plot_grid(hubei_graph,
 <p><img src="index_files/figure-html/unnamed-chunk-15-1.png" width="1152" /></p>
 <p>This Hubei examples exists to show that the logistic growth model seems to fit COVID-19 confirmed cases over time well—visually, at least. Let’s check that it actually works.</p>
 <pre class="r"><code>hubei_logit[[2]]</code></pre>
-<pre><code>## [1] 0.9950846</code></pre>
+<pre><code>## [1] 0.9953621</code></pre>
 <p>That’s a beautiful r-squared value.</p>
 <p>Interestingly, there is little effect on the Brent Crude price, since in the range where the cases grew the most, there was almost no net change in Brent Crude up to day 30 (since the prices rebounded) and then began to dip as cases in China began to stabilize. Yes, there is a significant dip, but that came <em>after</em> the majority of the growth in Chinese cases. So what <em>did</em> affect the oil price?</p>
 </div>
@@ -621,7 +624,7 @@ plot_grid(hubei_graph,
     filter(country.region==&quot;Italy&quot;) %&gt;%
     mutate(datediff = as.numeric(date - mdy(&quot;1-22-2020&quot;)))
 
-italy_logit &lt;- logistic_model(&quot;datediff&quot;, &quot;confirmed&quot;, 1000000, Italy)
+italy_logit &lt;- logistic_model(&quot;datediff&quot;, &quot;confirmed&quot;, 10000000, Italy)
 
 italy_graph &lt;-
   Italy %&gt;%
@@ -637,7 +640,7 @@ italy_graph &lt;-
 plot_grid(italy_graph, brent_graph + geom_vline(aes(xintercept=37.5), linetype=3))</code></pre>
 <p><img src="index_files/figure-html/unnamed-chunk-17-1.png" width="1152" /></p>
 <pre class="r"><code>italy_logit[[2]]</code></pre>
-<pre><code>## [1] 0.9990318</code></pre>
+<pre><code>## [1] 0.9972323</code></pre>
 <p>On a more fundamental level, Italy was the first indication of how much of an impact the coronavirus would have on the Western world, which sent a lot of markets into a frenzy. The dashed line indicates the day that cases began picking up, and we also observe that prices began dropping rapidly. Once again, we make the clarification that the Russia-OPEC price war drove those prices to the ground, but Italy was the sign that things were going to be bad.</p>
 <p>Back to real statistics now. The r-squared value is indeed high, but some may be dissuaded by the divergence of the model’s projections from the last recorded value of confirmed cases in Italy. From there, we turn to the logarithmically-scaled values to double-check.</p>
 <pre class="r"><code>Italy %&gt;%
@@ -647,7 +650,7 @@ plot_grid(italy_graph, brent_graph + geom_vline(aes(xintercept=37.5), linetype=3
     geom_line(data=italy_logit[[1]], aes(x, y), color=&quot;red&quot;) +
     theme_minimal()</code></pre>
 <p><img src="index_files/figure-html/unnamed-chunk-18-1.png" width="1152" /></p>
-<p>And the tail of the recorded cases almost perfectly matches the curve of the logistic model projections, which is a good sign.</p>
+<p>And the tail of the recorded cases almost perfectly matches the curve of the logistic model projections, which is a good sign. However, this model assumes a few key things that we’ll discuss later.</p>
 </div>
 <div id="us" class="section level2">
 <h2>US</h2>
@@ -665,28 +668,33 @@ us_graph &lt;-
       labs(x=&#39;Days Since 1-22-2020&#39;, y=&#39;Confirmed Cases&#39;) +
       geom_line(data=us_logit[[1]], aes(x, y)) +
       geom_vline(aes(xintercept=50), linetype=3) +
-      geom_vline(aes(xintercept=72), color = &quot;lightblue&quot;) +
-      geom_vline(aes(xintercept=95), linetype=3) +
+      geom_vline(aes(xintercept=78), color = &quot;lightblue&quot;) +
+      geom_vline(aes(xintercept=105), linetype=3) +
       xlim(40, 120) +
       theme_minimal()
 
-plot_grid(us_graph, brent_graph + geom_vline(aes(xintercept=72), color=&quot;lightblue&quot;) + xlim(40, 80))</code></pre>
+plot_grid(us_graph, brent_graph + geom_vline(aes(xintercept=78), color=&quot;lightblue&quot;) + xlim(40, 95))</code></pre>
 <p><img src="index_files/figure-html/unnamed-chunk-19-1.png" width="1152" /></p>
 <pre class="r"><code>us_logit[[2]]</code></pre>
-<pre><code>## [1] 0.9992944</code></pre>
-<p>The r-squared value is almost too perfect.</p>
-<p>Based on this model, we’ll expect a plateau to come around the 95th day, or…</p>
-<pre class="r"><code>mdy(&quot;1-22-2020&quot;) + 95</code></pre>
-<pre><code>## [1] &quot;2020-04-26&quot;</code></pre>
-<p>So essentially, the end of April.</p>
-<p>It’s important to note that this model gives a very low estimate of the carrying capacity in the US, which seems to plateau a little above 600000 cases. We’ve also passed the model’s inflection point (around 72 days into data recording). Funnily enough, that inflection came the day Brent rebounded.</p>
-<p>I can’t say exactly how great that projection is because it assumes:</p>
+<pre><code>## [1] 0.9982094</code></pre>
+<p>The r-squared value is great, but again, we’ll talk about assumptions and dangers soon.</p>
+<p>Based on this model, we’ll expect a plateau to come around the 105th day, or…</p>
+<pre class="r"><code>mdy(&quot;1-22-2020&quot;) + 105</code></pre>
+<pre><code>## [1] &quot;2020-05-06&quot;</code></pre>
+<p>So essentially, the beginning of May.</p>
+<p>Looking at the comparison betweeen America and Brent Crude futures prices, while the downfall of Brent did occur during the rise of cases in America, we still keep in mind that the fall was driven a lot by the price war in Saudi Arabia and Russia. That being said, the skyrocketing cases in America most likely did play a role in the fall of Brent crude oil because of the financial superpower in the country.</p>
+</div>
+<div id="warnings" class="section level2">
+<h2>Warnings</h2>
+<p>The logistic model has a few important assumptions:</p>
 <ul>
-<li>A relatively low asymptote</li>
-<li>All reported cases are accurate of all coronavirus cases in the US</li>
+<li>All reported cases are accurate of all coronavirus cases in the respective countries</li>
 <li>The status quo will not change (in this case, social distancing and stay-at-home orders)</li>
+<li>No fundamental changes in news or events occur</li>
 </ul>
-<p>Moving on, lookin at the comparison betweeen America and Brent Crude futures prices, while the downfall of Brent did occur during the rise of cases in America, we still keep in mind that the fall was driven a lot by the price war in Saudi Arabia and Russia. That being said, the skyrocketing cases in America most likely did play a role in the fall of Brent crude oil because of the financial superpower in the country.</p>
+<p>With the exception of the first point, the assumptions aren’t very feasible. People are moving constantly, and the push to reopen countries like America is loud and clear, which would ruin the model by allowing the carrying capacity to jump up significantly. The third point is impossible to maintain.</p>
+<p>While these assumptions are important to keep in mind, the overall effectiveness of the projections may be off by two weeks to a month</p>
+<p>In any case, once the time comes, we want to see what happens to Brent Crude after demand resumes to normal levels.</p>
 </div>
 <div id="global" class="section level2">
 <h2>Global</h2>
@@ -723,12 +731,12 @@ plot_grid(global_graph, brent_graph)</code></pre>
 <div id="conclusion" class="section level1">
 <h1>Conclusion</h1>
 <p>Recall that our original guiding question revolves around the analysis of effects of COVID-19 cases on Brent crude oil futures prices.</p>
-<p>We’ve examined historical data from COVID-19 recorded cases and Brent crude oil futures prices. From our analysis, we can see that Brent fell 64% at its worst as COVID-19 confirmed cases around the world climbed higher and higher. Fundamentally, this can be explained by a severe demand crash in oil as people stopped traveling and stayed at home instead. We also know that the Russia-OPEC price war severely affected the confidence in Brent as they began ramping up production instead of cutting it—although that problem will be resolved soon, by the looks of it.</p>
-<p>Statistically, we want to project how COVID-19 will affect the world in the near future. To that end, we used the logistic growth model to model our confirmed cases. First, we showed its fit on Hubei data, which had an extremely high r-squared value, and oil prices began showing signs of dropping. Then we have Italy, the first serious foray of COVID-19 into the Western world, and the United States. In the period where Italian cases were beginning to severely rise, oil prices began to drop rapidly, and the trend continued in almost a staircase pattern once cases in the United States began rising rapidly.</p>
-<p>However, there’s going to be an end to all of the cases. In fact, Italy seems to be reaching its peak extremely, extremely soon, while America will follow in late April. Once those numbers begin stabilizing (approach the asymptote of the logistic model’s asymptote), we may see an increase in Brent crude oil futures prices once again as they stabilize.</p>
+<p>We’ve examined historical data from COVID-19 recorded cases and Brent crude oil futures prices. From our analysis, we can see that Brent fell 69% at its worst point as COVID-19 confirmed cases around the world climbed higher and higher. Fundamentally, this can be explained by a severe demand crash in oil as people stopped traveling and stayed at home instead. We also know that the Russia-OPEC price war severely affected the confidence in Brent as they began ramping up production instead of cutting it, and the April expiration date again tanked oil prices.</p>
+<p>Statistically, we want to project how COVID-19 will affect the world in the near future. To that end, we used the logistic growth model to model our confirmed cases, well-known for its basic ability to model population growth (in this case, confirmed COVID cases). First, we showed its fit on Hubei data, which had an extremely high r-squared value, and oil prices began showing signs of dropping. Then we have Italy, the first serious foray of COVID-19 into the Western world, and the United States. In the period where Italian cases were beginning to severely rise, oil prices began to drop rapidly, and the trend continued in almost a staircase pattern once cases in the United States began rising rapidly.</p>
+<p>However, there’s going to be an end to all of the cases. Italy, six weeks into quarantine, seems to be reaching its peak soon, while America will follow in the beginning of May. These dates are off by few weeks because of the assumptions, but once those numbers begin stabilizing (approach the asymptote of the logistic model’s asymptote), we may see Brent crude oil prices stabilize and bottom out.</p>
 <p>It’s important to note the limitations of the logistic growth model used in projections. The most important one is the assumption of stasis in conditions used in coronavirus prevention—namely, social distancing. If we were to resume normal conditions prematurely, the logistic growth model used here would no longer apply, since the carrying capacity would suddenly increase as more virus exposure becomes possible.</p>
 <p>The model also heavily relies on accurate data reporting by global health organizations, as they are the ones providing the data (compiled by Johns Hopkins). This doesn’t necessarily mean that they are purposefully lowering the numbers, but that there are other unreported cases by people who do not go to the appropriate healthcare infrastructure, or simply not classified as infected yet.</p>
-<p>In any case, we conclude that the rise of the coronavirus since January has severely affected Brent crude oil futures prices, mixed in with current events and investor confidence, but according to our projections, we may see Brent crude stabilize towards the end of the month as COVID-19 confirmed cases begin to plateau, so long as we maintain the current prevention measures.</p>
+<p>In any case, we conclude that the rise of the coronavirus since January has severely affected Brent crude oil futures prices, mixed in with current events and investor confidence, because of lack of demand. We also see a lot of influence over the price based on emerging cases in Italy and America; however, a statistically accurate model on the effects of COVID-19 on Brent Crude oil prices is difficult to create because of the influence of current events on the market.</p>
 </div>
 
 
